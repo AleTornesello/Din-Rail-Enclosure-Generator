@@ -21,6 +21,19 @@ function bbox(m: MeshData) {
   return { min, max };
 }
 
+// Triangles lying in the plane x = xs inside the cavity would close the side opening.
+function facesCoveringOpening(m: MeshData, xs: number) {
+  let n = 0;
+  for (let t = 0; t < m.indices.length; t += 3) {
+    const v = [0, 1, 2].map((k) => m.indices[t + k] * 3);
+    if (!v.every((i) => Math.abs(m.positions[i] - xs) < 0.05)) continue;
+    const cy = v.reduce((s, i) => s + m.positions[i + 1], 0) / 3;
+    const cz = v.reduce((s, i) => s + m.positions[i + 2], 0) / 3;
+    if (Math.abs(cy) < 15 && cz > 10 && cz < 40) n++;
+  }
+  return n;
+}
+
 // Every directed edge of a closed, consistently oriented mesh has exactly one
 // opposite twin.
 function isWatertight(m: MeshData) {
@@ -84,6 +97,7 @@ describe('enclosure geometry', () => {
     expect(lid.min[0]).toBeCloseTo(r.dims.width / 2 - 2 - 3, 3);
     expect(lid.min[2]).toBeGreaterThanOrEqual(0);
     expect(r.parts[1].printFace).toBe('xmax');
+    expect(facesCoveringOpening(r.parts[0], r.dims.width / 2 - 2)).toBe(0);
   });
 
   it('builds a left side lid with screws and snap ridges', () => {
@@ -95,6 +109,8 @@ describe('enclosure geometry', () => {
     expect(r.warnings).toEqual([]);
     for (const part of r.parts) expect(isWatertight(part)).toBe(true);
     expect(bbox(r.parts[1]).min[0]).toBeCloseTo(-r.dims.width / 2, 3);
+    // the body is open on the lid side
+    expect(facesCoveringOpening(r.parts[0], -(r.dims.width / 2 - 2))).toBe(0);
     expect(r.parts[0].printFace).toBe('xmax');
   });
 

@@ -474,6 +474,10 @@ function build(g: Ctx, p: Params, warnings: string[]): BuildResult {
     const sideBox = s > 0 ? g.box(xs, BIG, -BIG, BIG, 0, BIG) : g.box(-BIG, xs, -BIG, BIG, 0, BIG);
     let lid = g.inter(body, sideBox);
     let main = s > 0 ? g.inter(body, g.box(-BIG, xs, -BIG, BIG, -BIG, BIG)) : g.inter(body, g.box(xs, BIG, -BIG, BIG, -BIG, BIG));
+    // The split plane coincides with the inside face of the side wall, which can
+    // leave a zero-thickness sheet over the opening. Clear the opening explicitly.
+    const opening = g.extrudeYZ(inner, Math.min(xs - s * 0.01, xs + s), Math.max(xs - s * 0.01, xs + s));
+    main = g.sub(main, opening);
 
     // Lip on the lid that follows the inside profile and slides into the body.
     const ringOuter = g.t(inner.offset(-cc, 'Round'));
