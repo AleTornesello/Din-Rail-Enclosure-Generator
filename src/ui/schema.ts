@@ -36,10 +36,25 @@ const mm = 'mm';
 const PITCHES = [3.5, 3.81, 5, 5.08, 7.5, 7.62, 10, 10.16];
 
 function terminalFields(key: 'terminalsTop' | 'terminalsBottom'): Field[] {
-  const on = (p: Params) => p[key].enabled;
+  const enabled = (p: Params) => p[key].enabled;
+  const on = (p: Params) => enabled(p) && p[key].type === 'screw';
+  const rj45 = (p: Params) => enabled(p) && p[key].type === 'rj45';
   const holes = (p: Params) => on(p) && p[key].style === 'holes';
   return [
     { kind: 'toggle', path: `${key}.enabled`, label: 'Openings' },
+    {
+      kind: 'select', path: `${key}.type`, label: 'Connection type', visible: enabled,
+      options: [
+        { value: 'screw', label: 'Screw terminal' },
+        { value: 'rj45', label: 'RJ45 jack' },
+      ],
+    },
+    { kind: 'number', path: `${key}.rj45Count`, label: 'Number of jacks', min: 1, max: 24, step: 1, visible: rj45 },
+    { kind: 'number', path: `${key}.rj45Pitch`, label: 'Jack spacing', unit: mm, min: 5, max: 60, step: 0.5, help: 'Centre distance between neighbouring jacks.', visible: (p) => rj45(p) && p[key].rj45Count > 1 },
+    { kind: 'number', path: `${key}.offsetX`, label: 'Horizontal offset', unit: mm, min: -200, max: 200, step: 0.5, visible: rj45 },
+    { kind: 'number', path: `${key}.rj45Width`, label: 'Hole width', unit: mm, min: 5, max: 40, step: 0.1, visible: rj45 },
+    { kind: 'number', path: `${key}.rj45Height`, label: 'Hole height', unit: mm, min: 5, max: 40, step: 0.1, help: 'Size along the enclosure depth.', visible: rj45 },
+    { kind: 'number', path: `${key}.rj45Z`, label: 'Hole depth position', unit: mm, min: 2, max: 200, step: 0.5, help: 'Centre of the hole, measured from the back of the enclosure.', visible: rj45 },
     { kind: 'number', path: `${key}.count`, label: 'Number of poles', min: 1, max: 48, step: 1, visible: on },
     { kind: 'number', path: `${key}.pitch`, label: 'Pitch', unit: mm, min: 2, max: 20, step: 0.01, suggestions: PITCHES, help: 'Centre distance between poles of the terminal block (5.08 mm is the most common).', visible: on },
     { kind: 'number', path: `${key}.offsetX`, label: 'Horizontal offset', unit: mm, min: -200, max: 200, step: 0.5, visible: on },

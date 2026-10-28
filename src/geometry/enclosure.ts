@@ -342,7 +342,12 @@ function build(g: Ctx, p: Params, warnings: string[]): BuildResult {
 
   // ---------- top / bottom connections ----------
   const terminals = (row: TerminalRow, s: 1 | -1, label: string) => {
-    if (!row.enabled || row.count < 1) return;
+    if (!row.enabled) return;
+    if (row.type === 'rj45') {
+      rj45Jacks(row, s, label);
+      return;
+    }
+    if (row.count < 1) return;
     const n = Math.floor(row.count);
     const span = n * row.pitch;
     if (span > W - 2 * t) warnings.push(`${label} connections (${span.toFixed(1)} mm) are wider than the inside (${(W - 2 * t).toFixed(1)} mm).`);
@@ -363,6 +368,23 @@ function build(g: Ctx, p: Params, warnings: string[]): BuildResult {
       const ys = s * (H / 2 - t - row.screwInset);
       if (hasNeck && Math.abs(ys) - row.screwDia / 2 < Hn / 2) warnings.push(`${label} screw holes overlap the front neck; increase the body height or reduce the inset.`);
       for (const x of xs) cuts.push(g.cylZ(x, ys, Ds - t - 0.6, Ds + 0.5, row.screwDia));
+    }
+  };
+  // RJ45 jacks: one rectangular hole per jack in the top/bottom wall.
+  const rj45Jacks = (row: TerminalRow, s: 1 | -1, label: string) => {
+    const n = Math.max(0, Math.floor(row.rj45Count));
+    if (n < 1) return;
+    const w = row.rj45Width;
+    const h = row.rj45Height;
+    const span = (n - 1) * row.rj45Pitch + w;
+    if (span > W - 2 * t) warnings.push(`${label} RJ45 jacks (${span.toFixed(1)} mm) are wider than the inside (${(W - 2 * t).toFixed(1)} mm).`);
+    if (n > 1 && row.rj45Pitch < w + 0.8) warnings.push(`${label} RJ45 holes overlap: increase the jack spacing.`);
+    if (twoPart && Math.abs(row.rj45Z - split) < h / 2 + 0.5) warnings.push(`${label} RJ45 holes cross the split line; move them or the split depth.`);
+    if (row.rj45Z + h / 2 > Dt - t) warnings.push(`${label} RJ45 holes are beyond the front of the enclosure.`);
+    const [y0, y1] = throughY(s, row.rj45Z);
+    for (let i = 0; i < n; i++) {
+      const x = row.offsetX + (i - (n - 1) / 2) * row.rj45Pitch;
+      cuts.push(g.box(x - w / 2, x + w / 2, y0, y1, row.rj45Z - h / 2, row.rj45Z + h / 2));
     }
   };
   terminals(p.terminalsTop, 1, 'Top');

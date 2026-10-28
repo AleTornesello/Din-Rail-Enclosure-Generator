@@ -132,6 +132,28 @@ describe('enclosure geometry', () => {
     for (const part of r.parts) expect(isWatertight(part)).toBe(true);
   });
 
+  it('cuts RJ45 jack holes in the top wall', () => {
+    const base = buildEnclosure(M, defaultParams());
+    const r = buildEnclosure(M, variant((p) => {
+      p.terminalsTop.type = 'rj45';
+      p.terminalsTop.rj45Count = 2;
+    }));
+    expect(r.warnings).toEqual([]);
+    for (const part of r.parts) expect(isWatertight(part)).toBe(true);
+    // two 16.2 × 13.8 holes through the 2 mm wall replace four 3.6 mm wire holes and four screw holes
+    const removed = 2 * 16.2 * 13.8 * 2 - 4 * 3.6 * 3.6 * 2 - 4 * Math.PI * 1.75 ** 2 * 2;
+    const vol = (res: typeof r) => res.parts.reduce((s, q) => s + q.volume, 0);
+    expect(vol(base) - vol(r)).toBeCloseTo(removed, -1);
+  });
+
+  it('warns when RJ45 jacks do not fit', () => {
+    const r = buildEnclosure(M, variant((p) => {
+      p.body.modules = 1;
+      p.terminalsBottom.type = 'rj45';
+    }));
+    expect(r.warnings.some((w) => w.startsWith('Bottom RJ45 jacks'))).toBe(true);
+  });
+
   it('reports a warning when the split is out of range', () => {
     const r = buildEnclosure(M, variant((p) => { p.construction.splitDepth = 100; }));
     expect(r.warnings.some((w) => w.includes('Split depth'))).toBe(true);
