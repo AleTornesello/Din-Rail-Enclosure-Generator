@@ -1,7 +1,7 @@
 import { describe, expect, it, beforeAll } from 'vitest';
 import Module, { type ManifoldToplevel } from 'manifold-3d';
 import { buildEnclosure, type MeshData } from '../src/geometry/enclosure';
-import { defaultParams, normalizeParams, parseSettings, serializeParams, type Params } from '../src/params';
+import { defaultParams, normalizeParams, parseSettings, serializeParams, terminalWireZ, type Params } from '../src/params';
 
 let M: ManifoldToplevel;
 beforeAll(async () => {
@@ -144,6 +144,33 @@ describe('enclosure geometry', () => {
     const removed = 2 * 16.2 * 13.8 * 2 - 4 * 3.6 * 3.6 * 2 - 4 * Math.PI * 1.75 ** 2 * 2;
     const vol = (res: typeof r) => res.parts.reduce((s, q) => s + q.volume, 0);
     expect(vol(base) - vol(r)).toBeCloseTo(removed, -1);
+  });
+
+  it('adds terminal block housings that line up with the wire holes', () => {
+    const base = buildEnclosure(M, defaultParams());
+    const r = buildEnclosure(M, variant((p) => {
+      p.terminalsTop.housing = true;
+      p.terminalsBottom.housing = true;
+    }));
+    expect(r.warnings).toEqual([]);
+    for (const part of r.parts) expect(isWatertight(part)).toBe(true);
+    // the housings live in the cover (above the 20 mm split) and add material
+    expect(r.parts[1].volume).toBeGreaterThan(base.parts[1].volume + 500);
+    expect(r.parts[0].volume).toBeCloseTo(base.parts[0].volume, 0);
+    // block sits against the shoulder: 44 - 2 - 0.3 - 10 + 4
+    const p = variant((q) => { q.terminalsTop.housing = true; });
+    expect(terminalWireZ(p, p.terminalsTop)).toBeCloseTo(35.7, 5);
+  });
+
+  it('builds housings with a side lid and no neck', () => {
+    const r = buildEnclosure(M, variant((p) => {
+      p.construction.type = 'side-lid';
+      p.body.neck = false;
+      p.terminalsTop.housing = true;
+      p.terminalsBottom.housing = true;
+    }));
+    expect(r.warnings).toEqual([]);
+    for (const part of r.parts) expect(isWatertight(part)).toBe(true);
   });
 
   it('warns when RJ45 jacks do not fit', () => {

@@ -32,6 +32,13 @@ export interface TerminalRow {
   rj45Width: number;
   rj45Height: number;
   rj45Z: number;
+  housing: boolean;
+  blockDepth: number;
+  blockHeight: number;
+  wireHeight: number;
+  housingWall: number;
+  housingClearance: number;
+  pinSlot: number;
 }
 
 export interface Cutout {
@@ -156,6 +163,14 @@ const terminalDefaults = (): TerminalRow => ({
   rj45Width: 16.2,
   rj45Height: 13.8,
   rj45Z: 28,
+  // Pocket for a 5.08 mm PCB terminal block (e.g. KF301 / DG301: 7.6 deep, 10 high).
+  housing: false,
+  blockDepth: 7.6,
+  blockHeight: 10,
+  wireHeight: 4,
+  housingWall: 1.6,
+  housingClearance: 0.3,
+  pinSlot: 3,
 });
 
 export function defaultParams(): Params {
@@ -307,6 +322,20 @@ export function parseSettings(text: string): Params {
 
 export function enclosureWidth(p: Params): number {
   return p.body.modules * p.body.modulePitch - p.body.widthClearance;
+}
+
+/** Depth from the back of the shoulder face; the whole depth when the stepped front is off. */
+export function shoulderDepth(p: Params): number {
+  return p.body.neck ? p.body.shoulderDepth : p.body.totalDepth;
+}
+
+/**
+ * Centre of the wire openings of a screw-terminal row. With a housing, the block
+ * sits against the shoulder, so its wire entry fixes the openings.
+ */
+export function terminalWireZ(p: Params, row: TerminalRow): number {
+  if (!row.housing) return row.wireZ;
+  return shoulderDepth(p) - p.body.wall - row.housingClearance - row.blockHeight + row.wireHeight;
 }
 
 /** PCB size used for the standoffs: either the user's board or the largest that fits with 2 mm margin. */
