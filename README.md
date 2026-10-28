@@ -20,13 +20,13 @@ Settings are saved in the browser automatically, and the JSON export lets you ke
 | Front profile | stepped DIN 43880 front (45 mm neck that fits distribution-board covers) or a flat front; neck height, shoulder depth, total depth |
 | DIN rail clip | snap-on spring latch with release tab, slide-on fixed hooks, or none; TH35×7.5 or TH35×15 rail, flange thickness, clearance, hook engagement and thickness, latch spring thickness and travel |
 | Construction | base + front cover (split depth) or body + removable side lid (left or right); lip height/thickness, fit clearance, snap-fit ridges, optional corner screws (post, pilot, clearance and head diameters) |
-| Top / bottom screw terminals | number of poles, pitch (3.5–10.16 mm), offset, one hole per pole (round/square) or one slot for pluggable blocks, wire entry depth, screwdriver holes on the shoulder |
+| Top / bottom connections | screw terminals: number of poles, pitch (3.5–10.16 mm), offset, one hole per pole (round/square) or one slot for pluggable blocks, wire entry depth, screwdriver holes on the shoulder |
 | Front panel | closed front or a window with rounded corners and an optional recess for a clear pane, a row of LED holes, a label recess |
 | Ventilation | slots on the sides and on the top/bottom walls |
 | PCB mounting | four corner standoffs for a board that fills the enclosure or has a custom size; height, diameter and screw hole |
 | Custom cut-outs | any number of round or rectangular holes on the front, shoulder, top, bottom, left or right face |
 
-The panel shows warnings when something does not fit (for example terminals wider than the enclosure, or a window larger than the front).
+The panel shows warnings when something does not fit (for example connections wider than the enclosure, or a window larger than the front).
 
 ### Geometry notes
 

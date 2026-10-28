@@ -39,7 +39,7 @@ function terminalFields(key: 'terminalsTop' | 'terminalsBottom'): Field[] {
   const on = (p: Params) => p[key].enabled;
   const holes = (p: Params) => on(p) && p[key].style === 'holes';
   return [
-    { kind: 'toggle', path: `${key}.enabled`, label: 'Terminal openings' },
+    { kind: 'toggle', path: `${key}.enabled`, label: 'Openings' },
     { kind: 'number', path: `${key}.count`, label: 'Number of poles', min: 1, max: 48, step: 1, visible: on },
     { kind: 'number', path: `${key}.pitch`, label: 'Pitch', unit: mm, min: 2, max: 20, step: 0.01, suggestions: PITCHES, help: 'Centre distance between poles of the terminal block (5.08 mm is the most common).', visible: on },
     { kind: 'number', path: `${key}.offsetX`, label: 'Horizontal offset', unit: mm, min: -200, max: 200, step: 0.5, visible: on },
@@ -88,7 +88,7 @@ export const SECTIONS: Section[] = [
     fields: [
       { kind: 'toggle', path: 'body.neck', label: 'Stepped front (DIN 43880 neck)', help: 'A narrower front that fits through the 45 mm cut-out of a distribution board cover.' },
       { kind: 'number', path: 'body.neckHeight', label: 'Front height', unit: mm, min: 10, max: 200, step: 0.5, visible: (p) => p.body.neck },
-      { kind: 'number', path: 'body.shoulderDepth', label: 'Shoulder depth', unit: mm, min: 10, max: 200, step: 0.5, help: 'From the back to the shoulder where the terminals are.', visible: (p) => p.body.neck },
+      { kind: 'number', path: 'body.shoulderDepth', label: 'Shoulder depth', unit: mm, min: 10, max: 200, step: 0.5, help: 'From the back to the shoulder where the connections are.', visible: (p) => p.body.neck },
       { kind: 'number', path: 'body.totalDepth', label: 'Total depth', unit: mm, min: 15, max: 250, step: 0.5, help: 'From the back to the front face.' },
     ],
   },
@@ -150,8 +150,8 @@ export const SECTIONS: Section[] = [
       { kind: 'number', path: 'construction.headDia', label: 'Screw head Ø', unit: mm, min: 2, max: 12, step: 0.1, help: 'Recessed into the front cover; with a side lid it only sizes the bosses.', visible: (p) => p.construction.screws },
     ],
   },
-  { id: 'top', title: 'Top screw terminals', fields: terminalFields('terminalsTop') },
-  { id: 'bottom', title: 'Bottom screw terminals', fields: terminalFields('terminalsBottom') },
+  { id: 'top', title: 'Top connections', fields: terminalFields('terminalsTop') },
+  { id: 'bottom', title: 'Bottom connections', fields: terminalFields('terminalsBottom') },
   {
     id: 'front',
     title: 'Front panel',

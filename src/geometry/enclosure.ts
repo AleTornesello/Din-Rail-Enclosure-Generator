@@ -340,12 +340,12 @@ function build(g: Ctx, p: Params, warnings: string[]): BuildResult {
     return [s * (yo - t - 0.6), s * (yo + 0.5)];
   };
 
-  // ---------- screw terminals ----------
+  // ---------- top / bottom connections ----------
   const terminals = (row: TerminalRow, s: 1 | -1, label: string) => {
     if (!row.enabled || row.count < 1) return;
     const n = Math.floor(row.count);
     const span = n * row.pitch;
-    if (span > W - 2 * t) warnings.push(`${label} terminals (${span.toFixed(1)} mm) are wider than the inside (${(W - 2 * t).toFixed(1)} mm).`);
+    if (span > W - 2 * t) warnings.push(`${label} connections (${span.toFixed(1)} mm) are wider than the inside (${(W - 2 * t).toFixed(1)} mm).`);
     if (twoPart && Math.abs(row.wireZ - split) < (row.style === 'slot' ? row.slotHeight : row.wireSize) / 2 + 0.5)
       warnings.push(`${label} wire openings cross the split line; move them or the split depth.`);
     if (row.wireZ > Dt - t) warnings.push(`${label} wire openings are beyond the front of the enclosure.`);
