@@ -1,5 +1,5 @@
 import type { CrossSection, Manifold, ManifoldToplevel } from 'manifold-3d';
-import { boardSize, enclosureWidth, RAIL_INNER_OPENING, RAIL_WIDTH, type Params, type TerminalRow } from '../params';
+import { boardSize, enclosureWidth, terminalWireZ, RAIL_INNER_OPENING, RAIL_WIDTH, type Params, type TerminalRow } from '../params';
 
 export interface MeshData {
   id: string;
@@ -350,18 +350,20 @@ function build(g: Ctx, p: Params, warnings: string[]): BuildResult {
     if (row.count < 1) return;
     const n = Math.floor(row.count);
     const span = n * row.pitch;
+    const wz = terminalWireZ(p, row);
     if (span > W - 2 * t) warnings.push(`${label} connections (${span.toFixed(1)} mm) are wider than the inside (${(W - 2 * t).toFixed(1)} mm).`);
-    if (twoPart && Math.abs(row.wireZ - split) < (row.style === 'slot' ? row.slotHeight : row.wireSize) / 2 + 0.5)
+    if (twoPart && Math.abs(wz - split) < (row.style === 'slot' ? row.slotHeight : row.wireSize) / 2 + 0.5)
       warnings.push(`${label} wire openings cross the split line; move them or the split depth.`);
-    if (row.wireZ > Dt - t) warnings.push(`${label} wire openings are beyond the front of the enclosure.`);
-    const [y0, y1] = throughY(s, row.wireZ);
+    if (wz > Dt - t) warnings.push(`${label} wire openings are beyond the front of the enclosure.`);
+    if (row.housing) terminalHousing(row, s, label, span);
+    const [y0, y1] = throughY(s, wz);
     const xs = Array.from({ length: n }, (_, i) => row.offsetX + (i - (n - 1) / 2) * row.pitch);
     if (row.style === 'slot') {
-      cuts.push(g.box(row.offsetX - span / 2, row.offsetX + span / 2, y0, y1, row.wireZ - row.slotHeight / 2, row.wireZ + row.slotHeight / 2));
+      cuts.push(g.box(row.offsetX - span / 2, row.offsetX + span / 2, y0, y1, wz - row.slotHeight / 2, wz + row.slotHeight / 2));
     } else {
       for (const x of xs) {
         const d = row.wireSize;
-        cuts.push(row.wireShape === 'round' ? g.cylY(x, row.wireZ, y0, y1, d) : g.box(x - d / 2, x + d / 2, y0, y1, row.wireZ - d / 2, row.wireZ + d / 2));
+        cuts.push(row.wireShape === 'round' ? g.cylY(x, wz, y0, y1, d) : g.box(x - d / 2, x + d / 2, y0, y1, wz - d / 2, wz + d / 2));
       }
     }
     if (row.screwHoles) {
@@ -370,6 +372,36 @@ function build(g: Ctx, p: Params, warnings: string[]): BuildResult {
       for (const x of xs) cuts.push(g.cylZ(x, ys, Ds - t - 0.6, Ds + 0.5, row.screwDia));
     }
   };
+  // Housing for a PCB terminal block, tucked in the corner between the top/bottom
+  // wall and the shoulder: a shelf under the block and a back wall with a slot
+  // for the pins. Both ends are open so the block slides in along X.
+  const terminalHousing = (row: TerminalRow, s: 1 | -1, label: string, span: number) => {
+    const hw = clamp(row.housingWall, 0.8, 5);
+    const hc = clamp(row.housingClearance, 0, 1);
+    const yWall = H / 2 - t; // inside of the top wall (mirrored for the bottom)
+    const zFace = Ds - t; // inside of the shoulder
+    const yIn = yWall - row.blockDepth - hc; // pocket edge towards the centre
+    const zIn = zFace - row.blockHeight - hc; // pocket edge towards the back
+    const x0 = Math.max(-W / 2 + t - 0.3, row.offsetX - span / 2 - hc);
+    const x1 = Math.min(W / 2 - t + 0.3, row.offsetX + span / 2 + hc);
+    if (hasNeck && yIn - hw < Hn / 2 - t) warnings.push(`${label} terminal housing runs into the front neck; increase the body height or reduce the block depth.`);
+    if (zIn - hw < fl + 1) warnings.push(`${label} terminal housing is deeper than the enclosure.`);
+    if (twoPart && zIn - hw < split) warnings.push(`${label} terminal housing crosses the split line; reduce the split depth.`);
+    if (row.screwHoles && (row.screwInset < row.screwDia / 2 || row.screwInset > row.blockDepth - row.screwDia / 2 + hc))
+      warnings.push(`${label} screwdriver holes are not over the housed block; adjust their distance from the wall.`);
+    const profile = g.union2([
+      g.rect2(yIn - hw, yIn, zIn - hw, zFace + 0.3), // shelf, fused to the shoulder
+      g.rect2(yIn - hw, yWall + 0.3, zIn - hw, zIn), // back wall, fused to the top wall
+    ]);
+    const prof = s > 0 ? profile : g.t(profile.mirror([1, 0]));
+    adds.push(g.extrudeYZ(prof, x0, x1));
+    // Pin slot through the back wall, centred on the block depth.
+    const yc = yWall - row.blockDepth / 2;
+    const ps = Math.min(row.pinSlot, row.blockDepth);
+    const sl = Math.max(1, span - 1);
+    cuts.push(g.box(row.offsetX - sl / 2, row.offsetX + sl / 2, s * (yc - ps / 2), s * (yc + ps / 2), zIn - hw - 0.5, zIn + 0.01));
+  };
+
   // RJ45 jacks: one rectangular hole per jack in the top/bottom wall.
   const rj45Jacks = (row: TerminalRow, s: 1 | -1, label: string) => {
     const n = Math.max(0, Math.floor(row.rj45Count));

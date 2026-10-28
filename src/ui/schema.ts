@@ -1,4 +1,4 @@
-import { boardSize, enclosureWidth, type Params } from '../params';
+import { boardSize, enclosureWidth, terminalWireZ, type Params } from '../params';
 
 export type Field =
   | {
@@ -68,7 +68,16 @@ function terminalFields(key: 'terminalsTop' | 'terminalsBottom'): Field[] {
     { kind: 'select', path: `${key}.wireShape`, label: 'Hole shape', visible: holes, options: [{ value: 'square', label: 'Square' }, { value: 'round', label: 'Round' }] },
     { kind: 'number', path: `${key}.wireSize`, label: 'Hole size', unit: mm, min: 1, max: 15, step: 0.1, visible: holes },
     { kind: 'number', path: `${key}.slotHeight`, label: 'Slot height', unit: mm, min: 2, max: 40, step: 0.5, visible: (p) => on(p) && p[key].style === 'slot' },
-    { kind: 'number', path: `${key}.wireZ`, label: 'Wire entry depth', unit: mm, min: 2, max: 200, step: 0.5, help: 'Centre of the wire openings, measured from the back of the enclosure.', visible: on },
+    { kind: 'heading', label: 'Housing', visible: on },
+    { kind: 'toggle', path: `${key}.housing`, label: 'Terminal block housing', help: 'A pocket in the shoulder corner that holds the terminal block, with a slot for its pins. The block slides in from the side.', visible: on },
+    { kind: 'number', path: `${key}.blockDepth`, label: 'Block depth', unit: mm, min: 3, max: 30, step: 0.1, help: 'Size of the block along the wire direction.', visible: (p) => on(p) && p[key].housing },
+    { kind: 'number', path: `${key}.blockHeight`, label: 'Block height', unit: mm, min: 3, max: 40, step: 0.1, help: 'From the pins side to the screw side.', visible: (p) => on(p) && p[key].housing },
+    { kind: 'number', path: `${key}.wireHeight`, label: 'Wire entry height', unit: mm, min: 1, max: 30, step: 0.1, help: 'Centre of the wire entry, measured from the pins side of the block.', visible: (p) => on(p) && p[key].housing },
+    { kind: 'number', path: `${key}.pinSlot`, label: 'Pin slot height', unit: mm, min: 1, max: 20, step: 0.1, visible: (p) => on(p) && p[key].housing },
+    { kind: 'number', path: `${key}.housingWall`, label: 'Housing wall', unit: mm, min: 0.8, max: 5, step: 0.1, visible: (p) => on(p) && p[key].housing },
+    { kind: 'number', path: `${key}.housingClearance`, label: 'Housing clearance', unit: mm, min: 0, max: 1, step: 0.05, visible: (p) => on(p) && p[key].housing },
+    { kind: 'number', path: `${key}.wireZ`, label: 'Wire entry depth', unit: mm, min: 2, max: 200, step: 0.5, help: 'Centre of the wire openings, measured from the back of the enclosure.', visible: (p) => on(p) && !p[key].housing },
+    { kind: 'info', text: (p) => `Wire openings at ${terminalWireZ(p, p[key]).toFixed(1)} mm from the back`, visible: (p) => on(p) && p[key].housing },
     { kind: 'toggle', path: `${key}.screwHoles`, label: 'Screwdriver holes on shoulder', visible: on },
     { kind: 'number', path: `${key}.screwDia`, label: 'Screwdriver hole Ø', unit: mm, min: 1, max: 10, step: 0.1, visible: (p) => on(p) && p[key].screwHoles },
     { kind: 'number', path: `${key}.screwInset`, label: 'Distance from wall', unit: mm, min: 1, max: 40, step: 0.5, help: 'Distance of the screw centres from the inside of the top/bottom wall.', visible: (p) => on(p) && p[key].screwHoles },
