@@ -4,6 +4,8 @@ import { boardSize, enclosureWidth, RAIL_INNER_OPENING, RAIL_WIDTH, type Params,
 export interface MeshData {
   id: string;
   name: string;
+  /** Side wall that goes on the print bed when the part is laid on its side. */
+  printFace?: 'xmin' | 'xmax';
   positions: Float32Array;
   indices: Uint32Array;
   volume: number;
@@ -153,7 +155,7 @@ class Ctx {
   }
 }
 
-function toMesh(m: Manifold, id: string, name: string): MeshData {
+function toMesh(m: Manifold, id: string, name: string, printFace?: 'xmin' | 'xmax'): MeshData {
   const mesh = m.getMesh();
   const np = mesh.numProp;
   const nv = mesh.vertProperties.length / np;
@@ -163,7 +165,7 @@ function toMesh(m: Manifold, id: string, name: string): MeshData {
     positions[i * 3 + 1] = mesh.vertProperties[i * np + 1];
     positions[i * 3 + 2] = mesh.vertProperties[i * np + 2];
   }
-  return { id, name, positions, indices: new Uint32Array(mesh.triVerts), volume: m.volume() };
+  return { id, name, printFace, positions, indices: new Uint32Array(mesh.triVerts), volume: m.volume() };
 }
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
@@ -237,8 +239,8 @@ function build(g: Ctx, p: Params, warnings: string[]): BuildResult {
     const yBeamBot = yBeamTop - bt;
     const tab = Math.max(0, rl.pullTab);
     const yEnd = -(H / 2 + tab);
-    cuts.push(g.box(-Ls / 2, Ls / 2, yBeamTop, yBeamTop + 0.8, -0.5, fl + 0.5));
-    cuts.push(g.box(-Ls / 2, Ls / 2, yBeamBot - gap, yBeamBot, -0.5, fl + 0.5));
+    cuts.push(g.box(-Ls / 2, Ls / 2, yBeamTop, yBeamTop + 0.8, -0.5, fl + 0.1));
+    cuts.push(g.box(-Ls / 2, Ls / 2, yBeamBot - gap, yBeamBot, -0.5, fl + 0.1));
     const cw = Math.min(6, Ls * 0.5);
     adds.push(g.box(-cw / 2, cw / 2, yBeamBot, yBeamTop, zDeep, 0.5));
     const plate = g.poly2([
@@ -258,6 +260,10 @@ function build(g: Ctx, p: Params, warnings: string[]): BuildResult {
   // ---------- construction (split, screws) ----------
   const cn = p.construction;
   const twoPart = cn.type === 'two-part';
+  const sideLid = cn.type === 'side-lid';
+  // Side lid: s is the side that opens, xs the inner face of that side wall.
+  const s = cn.side === 'left' ? -1 : 1;
+  const xs = s * (W / 2 - t);
   const cc = clamp(cn.fitClearance, 0, 1);
   const lipH = clamp(cn.lipHeight, 1, 15);
   const lipT = clamp(cn.lipThickness, 0.6, 5);
@@ -285,6 +291,26 @@ function build(g: Ctx, p: Params, warnings: string[]): BuildResult {
         cuts.push(g.cylZ(q.x, q.y, fl + 1.5, split + EPS, clamp(cn.pilotDia, 1, Dp - 1.6)));
         cuts.push(g.cylZ(q.x, q.y, split - EPS, zTop + t + 1, clamp(cn.clearanceDia, 1, Dp - 1.6)));
         cuts.push(g.cylZ(q.x, q.y, split + 3, zTop + t + 1, clamp(cn.headDia, 1, Dp - 1.2)));
+      }
+    }
+  }
+
+  // Side lid screws: bosses along X in the four corners of the shoulder area,
+  // screwed from outside through the lid.
+  const bosses: { y: number; z: number }[] = [];
+  const bossLen = Math.min(10, W - 2 * t - 2);
+  if (sideLid && cn.screws) {
+    const py = H / 2 - t - Dp / 2 + 0.5;
+    const zLo = fl + Dp / 2 - 0.5;
+    const zHi = Ds - t - Dp / 2 + 0.5;
+    if (zHi - zLo < Dp + 0.5 || bossLen < 4) {
+      warnings.push('Screw bosses do not fit in this enclosure: screws disabled.');
+    } else {
+      for (const y of [-py, py]) for (const z of [zLo, zHi]) bosses.push({ y, z });
+      for (const q of bosses) {
+        adds.push(g.cylX(q.y, q.z, xs - s * bossLen, xs + s * 0.3, Dp));
+        cuts.push(g.cylX(q.y, q.z, xs - s * (bossLen - 1.5), xs + s * EPS, clamp(cn.pilotDia, 1, Dp - 1.6)));
+        cuts.push(g.cylX(q.y, q.z, xs - s * EPS, s * (W / 2 + 1), clamp(cn.clearanceDia, 1, Dp - 1.6)));
       }
     }
   }
@@ -443,8 +469,45 @@ function build(g: Ctx, p: Params, warnings: string[]): BuildResult {
   body = g.sub(body, cutAll);
 
   const parts: MeshData[] = [];
-  if (!twoPart) {
-    parts.push(toMesh(body, 'body', 'Enclosure'));
+  if (sideLid) {
+    // The side wall (without its share of the rail hooks) becomes the lid.
+    const sideBox = s > 0 ? g.box(xs, BIG, -BIG, BIG, 0, BIG) : g.box(-BIG, xs, -BIG, BIG, 0, BIG);
+    let lid = g.inter(body, sideBox);
+    let main = s > 0 ? g.inter(body, g.box(-BIG, xs, -BIG, BIG, -BIG, BIG)) : g.inter(body, g.box(xs, BIG, -BIG, BIG, -BIG, BIG));
+
+    // Lip on the lid that follows the inside profile and slides into the body.
+    const ringOuter = g.t(inner.offset(-cc, 'Round'));
+    const ringInner = g.t(inner.offset(-(cc + lipT), 'Round'));
+    const ring = g.t(ringOuter.subtract(ringInner));
+    const x0 = xs - s * lipH;
+    let lip = g.extrudeYZ(ring, Math.min(x0, xs + s * EPS), Math.max(x0, xs + s * EPS));
+    const clear = bosses.map((q) => g.cylX(q.y, q.z, xs - s * (lipH + 1), xs + s * EPS, Dp + 2 * cc));
+    lip = g.sub(lip, g.union(clear));
+
+    if (cn.snapRidges) {
+      const rr = 0.5;
+      const z0 = fl + 2;
+      const z1 = Ds - t - 2;
+      const Lr = (z1 - z0) * 0.6;
+      const zc = (z0 + z1) / 2;
+      const xr = xs - s * lipH / 2;
+      const ridges: Manifold[] = [];
+      const grooves: Manifold[] = [];
+      if (Lr > 2) {
+        for (const sy of [1, -1]) {
+          const y = sy * (H / 2 - t - cc);
+          ridges.push(g.cylZ(xr, y, zc - Lr / 2, zc + Lr / 2, 2 * rr));
+          grooves.push(g.cylZ(xr, y, zc - Lr / 2 - 0.5, zc + Lr / 2 + 0.5, 2 * (rr + 0.1)));
+        }
+      }
+      lip = g.add(lip, g.union(ridges));
+      main = g.sub(main, g.union(grooves));
+    }
+    lip = g.sub(lip, cutAll);
+    lid = g.add(lid, lip);
+    // Body prints standing on its closed side, the lid on its outer face.
+    parts.push(toMesh(main, 'body', 'Body', s > 0 ? 'xmin' : 'xmax'));
+    parts.push(toMesh(lid, 'lid', 'Side lid', s > 0 ? 'xmax' : 'xmin'));
   } else {
     let base = g.inter(body, g.box(-BIG, BIG, -BIG, BIG, -BIG, split));
     let cover = g.inter(body, g.box(-BIG, BIG, -BIG, BIG, split, BIG));

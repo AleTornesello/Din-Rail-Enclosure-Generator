@@ -64,21 +64,38 @@ describe('enclosure geometry', () => {
     expect(r.dims).toEqual({ width: 69.5, height: 90, depth: 58 });
   });
 
-  it('builds a 1-module single-piece enclosure with fixed hooks and no neck', () => {
+  it('builds a 1-module flat enclosure with fixed hooks and a right side lid', () => {
     const r = buildEnclosure(M, variant((p) => {
       p.body.modules = 1;
       p.body.neck = false;
       p.rail.clip = 'fixed';
-      p.construction.type = 'single';
+      p.construction.type = 'side-lid';
       p.terminalsTop.count = 2;
       p.terminalsBottom.count = 2;
       p.front.window = false;
-      p.front.leds = true;
       p.front.ledCount = 1;
       p.pcb.standoffs = false;
     }));
-    expect(r.parts).toHaveLength(1);
-    expect(isWatertight(r.parts[0])).toBe(true);
+    expect(r.parts.map((p) => p.id)).toEqual(['body', 'lid']);
+    for (const part of r.parts) expect(isWatertight(part)).toBe(true);
+    const lid = bbox(r.parts[1]);
+    // the lid is the right wall (x = W/2) plus a lip reaching into the body
+    expect(lid.max[0]).toBeCloseTo(r.dims.width / 2, 3);
+    expect(lid.min[0]).toBeCloseTo(r.dims.width / 2 - 2 - 3, 3);
+    expect(lid.min[2]).toBeGreaterThanOrEqual(0);
+    expect(r.parts[1].printFace).toBe('xmax');
+  });
+
+  it('builds a left side lid with screws and snap ridges', () => {
+    const r = buildEnclosure(M, variant((p) => {
+      p.construction.type = 'side-lid';
+      p.construction.side = 'left';
+      p.construction.screws = true;
+    }));
+    expect(r.warnings).toEqual([]);
+    for (const part of r.parts) expect(isWatertight(part)).toBe(true);
+    expect(bbox(r.parts[1]).min[0]).toBeCloseTo(-r.dims.width / 2, 3);
+    expect(r.parts[0].printFace).toBe('xmax');
   });
 
   it('builds a wide enclosure with screws, slots, vents and custom cutouts', () => {
@@ -115,5 +132,8 @@ describe('settings', () => {
     expect(p.body.modules).toBe(4);
     expect(p.body.height).toBe(80);
     expect(p.cutouts[0]).toMatchObject({ face: 'front', w: 9 });
+  });
+  it('falls back to the default construction for the removed single-piece type', () => {
+    expect(normalizeParams({ construction: { type: 'single' } }).construction.type).toBe('two-part');
   });
 });

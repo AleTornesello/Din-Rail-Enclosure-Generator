@@ -6,7 +6,7 @@
 //      (it rests on the front face of the rail flanges)
 
 export type ClipType = 'spring' | 'fixed' | 'none';
-export type Construction = 'two-part' | 'single';
+export type Construction = 'two-part' | 'side-lid';
 export type HoleShape = 'round' | 'square';
 export type TerminalStyle = 'holes' | 'slot';
 export type CutoutFace = 'front' | 'shoulder' | 'top' | 'bottom' | 'left' | 'right';
@@ -63,6 +63,7 @@ export interface Params {
   };
   construction: {
     type: Construction;
+    side: 'left' | 'right';
     splitDepth: number;
     lipHeight: number;
     lipThickness: number;
@@ -171,6 +172,7 @@ export function defaultParams(): Params {
     },
     construction: {
       type: 'two-part',
+      side: 'right',
       splitDepth: 20,
       lipHeight: 3,
       lipThickness: 1.2,
@@ -260,6 +262,11 @@ const FACES: CutoutFace[] = ['front', 'shoulder', 'top', 'bottom', 'left', 'righ
 export function normalizeParams(raw: unknown): Params {
   const p = defaultParams();
   mergeInto(p as unknown as Record<string, unknown>, raw);
+  // Values outside the known options (e.g. the removed single-piece type) fall back to defaults.
+  const d = defaultParams();
+  if (!['two-part', 'side-lid'].includes(p.construction.type)) p.construction.type = d.construction.type;
+  if (!['left', 'right'].includes(p.construction.side)) p.construction.side = d.construction.side;
+  if (!['spring', 'fixed', 'none'].includes(p.rail.clip)) p.rail.clip = d.rail.clip;
   const rawCutouts = (raw as { cutouts?: unknown })?.cutouts;
   if (Array.isArray(rawCutouts)) {
     p.cutouts = rawCutouts

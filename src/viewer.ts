@@ -6,6 +6,7 @@ const PART_COLORS: Record<string, number> = {
   base: 0x3d4f66,
   cover: 0xe8e4da,
   body: 0xe8e4da,
+  lid: 0x3d4f66,
 };
 
 export class Viewer {
@@ -123,6 +124,13 @@ export class Viewer {
     const depth = this.last?.dims.depth ?? 50;
     const cover = this.partMeshes.get('cover');
     if (cover) cover.position.z = this.explode * depth * 0.8;
+    const lid = this.partMeshes.get('lid');
+    if (lid) {
+      // Move the side lid outwards, away from whichever side it closes.
+      lid.geometry.computeBoundingBox();
+      const side = Math.sign(lid.geometry.boundingBox!.max.x + lid.geometry.boundingBox!.min.x) || 1;
+      lid.position.x = side * this.explode * (this.last?.dims.width ?? 50) * 0.8;
+    }
     if (this.railMesh) this.railMesh.position.z = -this.explode * 15;
   }
 

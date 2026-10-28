@@ -46,6 +46,17 @@ describe('export', () => {
     expect(vol(parts[0].positions, parts[0].indices)).toBeCloseTo(r.parts[0].volume, 0);
   });
 
+  it('puts the side lid on its outer face', () => {
+    const p = defaultParams();
+    p.construction.type = 'side-lid';
+    const side = buildEnclosure(M, p);
+    const [body, lid] = layoutParts(side.parts, true).map((q) => bounds(q.positions));
+    expect(body.min[2]).toBeCloseTo(0, 5);
+    expect(lid.min[2]).toBeCloseTo(0, 5);
+    // wall (2 mm) + lip (3 mm) standing up from the bed
+    expect(lid.max[2]).toBeCloseTo(5, 3);
+  });
+
   it('writes a binary STL with the right triangle count', async () => {
     const blob = toSTL(r.parts);
     const buf = new DataView(await blob.arrayBuffer());
