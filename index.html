@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Generate 3D-printable DIN rail enclosures (IEC 60715 TH35) in your browser and export STL or 3MF." />
+    <title>DIN Rail Enclosure Generator</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='6' y='3' width='20' height='26' rx='2' fill='%233d4f66'/%3E%3Crect x='10' y='10' width='12' height='12' fill='%23e8e4da'/%3E%3Crect x='2' y='14' width='28' height='4' fill='%23b8bec6'/%3E%3C/svg%3E" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <svg viewBox="0 0 32 32" width="22" height="22" aria-hidden="true"><rect x="6" y="3" width="20" height="26" rx="2" fill="currentColor" opacity=".85"/><rect x="10" y="10" width="12" height="12" fill="var(--bg)"/><rect x="2" y="14" width="28" height="4" fill="var(--muted)"/></svg>
+        <span class="title">DIN Rail Enclosure Generator</span>
+        <span class="badge">IEC 60715 · TH35</span>
+      </div>
+      <div class="dims" id="dims"></div>
+      <div class="actions">
+        <span class="status" id="status"></span>
+        <button class="btn" id="btn-reset" type="button" title="Restore the default settings">Reset</button>
+        <button class="btn" id="btn-import" type="button">Import<span class="long"> settings</span></button>
+        <button class="btn" id="btn-export-settings" type="button">Export<span class="long"> settings</span></button>
+        <div class="menu">
+          <button class="btn primary" id="btn-export-model" type="button" aria-haspopup="true" aria-expanded="false"><span class="long">Export </span>Model ▾</button>
+          <div class="menu-list" id="export-menu" hidden>
+            <button type="button" data-export="stl-all">STL – all parts</button>
+            <div id="export-parts"></div>
+            <button type="button" data-export="3mf">3MF – all parts (multi-object)</button>
+            <label class="menu-check"><input type="checkbox" id="print-orient" checked /> Lay parts on their side for printing</label>
+          </div>
+        </div>
+        <input type="file" id="file-import" accept=".json,application/json" hidden />
+      </div>
+    </header>
+    <main class="stage">
+      <div class="viewport" id="viewport"></div>
+      <aside class="panel" id="panel-wrap">
+        <div class="panel-head">
+          <span>Configuration</span>
+          <button class="btn icon" id="btn-collapse" type="button" title="Hide panel">«</button>
+        </div>
+        <div class="panel-scroll" id="panel"></div>
+      </aside>
+      <button class="btn show-panel" id="btn-expand" type="button" hidden>» Configure</button>
+      <div class="view-tools">
+        <label><input type="checkbox" id="opt-rail" checked /> Rail</label>
+        <label><input type="checkbox" id="opt-section" /> Section</label>
+        <label class="explode">Explode <input type="range" id="opt-explode" min="0" max="1" step="0.01" value="0" /></label>
+        <span class="views" role="group" aria-label="Camera">
+          <button class="btn small" type="button" data-view="iso">3D</button>
+          <button class="btn small" type="button" data-view="front">Front</button>
+          <button class="btn small" type="button" data-view="side">Side</button>
+          <button class="btn small" type="button" data-view="top">Top</button>
+        </span>
+      </div>
+      <div class="warnings" id="warnings" hidden></div>
+    </main>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
