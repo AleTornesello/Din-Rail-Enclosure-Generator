@@ -9,11 +9,13 @@ export type ClipType = 'spring' | 'fixed' | 'none';
 export type Construction = 'two-part' | 'side-lid';
 export type HoleShape = 'round' | 'square';
 export type TerminalStyle = 'holes' | 'slot';
+export type ConnectionType = 'screw' | 'rj45';
 export type CutoutFace = 'front' | 'shoulder' | 'top' | 'bottom' | 'left' | 'right';
 export type CutoutShape = 'circle' | 'rect';
 
 export interface TerminalRow {
   enabled: boolean;
+  type: ConnectionType;
   count: number;
   pitch: number;
   offsetX: number;
@@ -25,6 +27,11 @@ export interface TerminalRow {
   screwHoles: boolean;
   screwDia: number;
   screwInset: number;
+  rj45Count: number;
+  rj45Pitch: number;
+  rj45Width: number;
+  rj45Height: number;
+  rj45Z: number;
 }
 
 export interface Cutout {
@@ -131,6 +138,7 @@ export const RAIL_INNER_OPENING = 25;
 
 const terminalDefaults = (): TerminalRow => ({
   enabled: true,
+  type: 'screw',
   count: 4,
   pitch: 5.08,
   offsetX: 0,
@@ -142,6 +150,12 @@ const terminalDefaults = (): TerminalRow => ({
   screwHoles: true,
   screwDia: 3.5,
   screwInset: 5,
+  // Panel cut-out of a common PCB-mount RJ45 jack (about 16 × 13.5 mm) plus clearance.
+  rj45Count: 1,
+  rj45Pitch: 18,
+  rj45Width: 16.2,
+  rj45Height: 13.8,
+  rj45Z: 28,
 });
 
 export function defaultParams(): Params {
@@ -267,6 +281,7 @@ export function normalizeParams(raw: unknown): Params {
   if (!['two-part', 'side-lid'].includes(p.construction.type)) p.construction.type = d.construction.type;
   if (!['left', 'right'].includes(p.construction.side)) p.construction.side = d.construction.side;
   if (!['spring', 'fixed', 'none'].includes(p.rail.clip)) p.rail.clip = d.rail.clip;
+  for (const row of [p.terminalsTop, p.terminalsBottom]) if (!['screw', 'rj45'].includes(row.type)) row.type = 'screw';
   const rawCutouts = (raw as { cutouts?: unknown })?.cutouts;
   if (Array.isArray(rawCutouts)) {
     p.cutouts = rawCutouts
