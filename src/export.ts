@@ -5,8 +5,8 @@ const GAP = 10;
 
 /**
  * Returns copies of the parts ready for slicing. In print orientation each part
- * lies on its side (the enclosure's left wall on the bed): every feature is an
- * extrusion of the side profile, so it prints without supports.
+ * lies on a side wall (left by default, or the one named by `printFace`): every
+ * feature is an extrusion of the side profile, so it prints without supports.
  */
 export function layoutParts(parts: MeshData[], printOrientation: boolean): MeshData[] {
   let cursor = 0;
@@ -14,7 +14,12 @@ export function layoutParts(parts: MeshData[], printOrientation: boolean): MeshD
     const src = part.positions;
     const pos = new Float32Array(src.length);
     for (let i = 0; i < src.length; i += 3) {
-      if (printOrientation) {
+      if (printOrientation && part.printFace === 'xmax') {
+        // (x, y, z) -> (y, -z, -x): a proper rotation that puts x = max on the bed.
+        pos[i] = src[i + 1];
+        pos[i + 1] = -src[i + 2];
+        pos[i + 2] = -src[i];
+      } else if (printOrientation) {
         // (x, y, z) -> (y, z, x): a proper rotation, so winding is preserved.
         pos[i] = src[i + 1];
         pos[i + 1] = src[i + 2];
